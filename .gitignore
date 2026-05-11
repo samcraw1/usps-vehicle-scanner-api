@@ -1,0 +1,16 @@
+# Maven build output
+target/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# AWS Elastic Beanstalk
+.elasticbeanstalk/
+
+# OS
+.DS_Store
+
+# Don't commit real secrets - use application.properties.example instead
+src/main/resources/application.properties
