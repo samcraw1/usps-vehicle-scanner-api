@@ -2,6 +2,12 @@
 
 A Java + Spring Boot REST API that uses OpenAI Vision (GPT-4o) to analyze USPS LLV mail truck photos for damage, tire issues, fluid leaks, and other safety hazards. Returns a structured `PASS` / `ATTENTION` / `UNSAFE` verdict with details.
 
+## 🚀 Live Demo
+
+**[http://vehicle-scanner-env.eba-mpgirmpk.us-east-1.elasticbeanstalk.com](http://vehicle-scanner-env.eba-mpgirmpk.us-east-1.elasticbeanstalk.com)**
+
+Deployed to AWS Elastic Beanstalk. Open the URL, drag-and-drop a vehicle photo, see live AI analysis. (Note: HTTP only — Safari may auto-upgrade to HTTPS and fail; Chrome handles it gracefully.)
+
 Built as the Java backend companion to my [React Native vehicle inspection app](https://github.com/samcraw1/usps-vehicle-inspection).
 
 ## Features
