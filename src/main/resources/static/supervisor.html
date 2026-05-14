@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>USPS Supervisor Dashboard</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 100%);
+    color: white;
+    margin: 0;
+    padding: 40px 20px;
+    min-height: 100vh;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 32px; }
+  header h1 { margin: 0 0 8px; font-size: 32px; }
+  header p { margin: 0; opacity: 0.7; }
+  .card {
+    background: white;
+    color: #1a1a1a;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .updated { font-size: 12px; color: #5b6770; text-align: right; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td {
+    padding: 14px 12px;
+    text-align: left;
+    border-bottom: 1px solid #e1e4e8;
+  }
+  th {
+    background: #f4f6f8;
+    color: #00427b;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.6px;
+    cursor: pointer;
+    user-select: none;
+  }
+  th:hover { background: #e8ecf0; }
+  td.username { font-weight: 500; font-size: 15px; }
+  td.role {
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+  }
+  td.role.SUPERVISOR { color: #6a4abf; }
+  td.role.CARRIER { color: #00427b; }
+  td.time { font-variant-numeric: tabular-nums; color: #5b6770; }
+  td.inspection {
+    font-weight: 600;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .pill { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .pill.PASS { background: #d4edda; color: #155724; }
+  .pill.ATTENTION { background: #fff3cd; color: #856404; }
+  .pill.UNSAFE { background: #f8d7da; color: #721c24; }
+  .pill.none { background: #e1e4e8; color: #5b6770; }
+  .empty { text-align: center; padding: 40px; color: #5b6770; }
+  .footer { text-align: center; margin-top: 24px; opacity: 0.6; font-size: 13px; }
+  .stats { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  .stat {
+    flex: 1;
+    min-width: 150px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    backdrop-filter: blur(8px);
+  }
+  .stat .num { font-size: 28px; font-weight: bold; }
+  .stat .lbl { font-size: 12px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>👔 USPS Supervisor Dashboard</h1>
+      <p>Fleet-wide carrier performance and inspection status</p>
+    </header>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="card">
+      <div class="updated" id="updated">Loading...</div>
+      <table>
+        <thead>
+          <tr>
+            <th data-sort="username">Carrier</th>
+            <th data-sort="role">Role</th>
+            <th data-sort="bestTimeMs">Best Time</th>
+            <th data-sort="lastInspectionStatus">Last Inspection</th>
+            <th data-sort="totalInspections">Total Inspections</th>
+          </tr>
+        </thead>
+        <tbody id="board">
+          <tr><td colspan="5" class="empty">Loading carriers...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="footer">Auto-refreshes every 5s · Built with Spring Boot + JPA + PostgreSQL on AWS RDS</div>
+  </div>
+
+<script>
+let currentData = [];
+let sortKey = 'bestTimeMs';
+let sortDir = 'asc';
+
+function formatTime(ms) {
+  if (!ms) return '—';
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}m ${s.toString().padStart(2, '0')}s`;
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+function render() {
+  const tbody = document.getElementById('board');
+  if (!currentData.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">No carriers yet.</td></tr>';
+    return;
+  }
+
+  // Sort
+  const sorted = [...currentData].sort((a, b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    const cmp = (typeof av === 'string') ? av.localeCompare(bv) : av - bv;
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  tbody.innerHTML = sorted.map(e => {
+    const roleIcon = e.role === 'SUPERVISOR' ? '👔' : '🚛';
+    const lastInsp = e.lastInspectionStatus;
+    const pillClass = lastInsp || 'none';
+    const pillText = lastInsp || 'No inspections';
+    return `
+      <tr>
+        <td class="username">${escapeHtml(e.username)}</td>
+        <td class="role ${e.role}">${roleIcon} ${e.role}</td>
+        <td class="time">${formatTime(e.bestTimeMs)}</td>
+        <td><span class="pill ${pillClass}">${pillText}</span></td>
+        <td class="time">${e.totalInspections}</td>
+      </tr>`;
+  }).join('');
+}
+
+function renderStats() {
+  const totalCarriers = currentData.length;
+  const supervisors = currentData.filter(e => e.role === 'SUPERVISOR').length;
+  const totalInspections = currentData.reduce((sum, e) => sum + (e.totalInspections || 0), 0);
+  const fastestMs = Math.min(...currentData.filter(e => e.bestTimeMs > 0).map(e => e.bestTimeMs), Infinity);
+
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="num">${totalCarriers}</div><div class="lbl">Total Carriers</div></div>
+    <div class="stat"><div class="num">${supervisors}</div><div class="lbl">Supervisors</div></div>
+    <div class="stat"><div class="num">${totalInspections}</div><div class="lbl">Inspections Logged</div></div>
+    <div class="stat"><div class="num">${fastestMs === Infinity ? '—' : formatTime(fastestMs)}</div><div class="lbl">Fastest Time</div></div>
+  `;
+}
+
+async function refresh() {
+  try {
+    const res = await fetch('/api/supervisor/overview');
+    currentData = await res.json();
+    render();
+    renderStats();
+    document.getElementById('updated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+  } catch (err) {
+    document.getElementById('updated').textContent = 'Error: ' + err.message;
+  }
+}
+
+// Click column header to sort
+document.querySelectorAll('th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.sort;
+    if (key === sortKey) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortKey = key; sortDir = 'asc'; }
+    render();
+  });
+});
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

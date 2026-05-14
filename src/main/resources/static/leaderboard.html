@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>USPS Mail Carrier — Leaderboard</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: linear-gradient(135deg, #00427b 0%, #002a52 100%);
+    color: white;
+    margin: 0;
+    padding: 40px 20px;
+    min-height: 100vh;
+  }
+  .container { max-width: 720px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 32px; }
+  header h1 { margin: 0 0 8px; font-size: 32px; }
+  header p { margin: 0; opacity: 0.85; }
+  .card {
+    background: white;
+    color: #1a1a1a;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  .updated {
+    font-size: 12px;
+    color: #5b6770;
+    text-align: right;
+    margin-bottom: 12px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 16px;
+  }
+  th, td {
+    padding: 14px 12px;
+    text-align: left;
+    border-bottom: 1px solid #e1e4e8;
+  }
+  th {
+    background: #f4f6f8;
+    color: #00427b;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+  td.rank { font-weight: bold; color: #00427b; width: 60px; }
+  td.rank.gold   { color: #ffb000; }
+  td.rank.silver { color: #9aa5b1; }
+  td.rank.bronze { color: #cd7f32; }
+  td.username { font-weight: 500; }
+  td.time { font-variant-numeric: tabular-nums; color: #5b6770; }
+  .empty { text-align: center; padding: 40px; color: #5b6770; }
+  .footer { text-align: center; margin-top: 24px; opacity: 0.7; font-size: 13px; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🏆 USPS Mail Carrier — Leaderboard</h1>
+      <p>Top players ranked by total time to complete all 4 routes</p>
+    </header>
+    <div class="card">
+      <div class="updated" id="updated">Loading...</div>
+      <table>
+        <thead>
+          <tr><th>Rank</th><th>Carrier</th><th>Total Time</th></tr>
+        </thead>
+        <tbody id="board">
+          <tr><td colspan="3" class="empty">Loading leaderboard...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="footer">Built with Java + Spring Boot + JPA. Auto-refreshes every 5s.</div>
+  </div>
+
+<script>
+function formatTime(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}m ${s.toString().padStart(2, '0')}s`;
+}
+
+async function refresh() {
+  try {
+    const res = await fetch('/api/leaderboard');
+    const data = await res.json();
+    const tbody = document.getElementById('board');
+
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty">No scores yet — be the first!</td></tr>';
+    } else {
+      tbody.innerHTML = data.map((e, i) => {
+        const rank = i + 1;
+        const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+        return `
+          <tr>
+            <td class="rank ${rankClass}">#${rank}</td>
+            <td class="username">${e.role === 'SUPERVISOR' ? '👔' : '🚛'} ${escapeHtml(e.username)}</td>
+            <td class="time">${formatTime(e.bestTimeMs)}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('updated').textContent =
+      'Updated: ' + new Date().toLocaleTimeString();
+  } catch (err) {
+    document.getElementById('updated').textContent = 'Error: ' + err.message;
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[c]));
+}
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>
