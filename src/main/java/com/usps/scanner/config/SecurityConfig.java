@@ -40,7 +40,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/inspect").permitAll()        // legacy mobile scanner client
                 .requestMatchers("/api/history").permitAll()        // legacy mobile scanner client
                 .requestMatchers("/api/carriers/**").permitAll()    // postmaster dashboard read-only feed
-                .requestMatchers("/", "/index.html", "/leaderboard.html", "/supervisor.html", "/postmaster.html", "/*.css", "/*.js").permitAll()  // static front-end pages
+                .requestMatchers("/", "/index.html", "/leaderboard.html", "/supervisor.html", "/postmaster.html", "/history.html", "/*.css", "/*.js").permitAll()  // static front-end pages
                 .requestMatchers("/h2-console/**").permitAll()      // local SQL playground for learning
                 .anyRequest().authenticated()                       // everything else requires JWT
             )
