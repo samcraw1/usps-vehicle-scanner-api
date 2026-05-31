@@ -42,6 +42,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/carriers/**").permitAll()    // postmaster dashboard read-only feed
                 .requestMatchers("/", "/index.html", "/leaderboard.html", "/supervisor.html", "/postmaster.html", "/history.html", "/*.css", "/*.js").permitAll()  // static front-end pages
                 .requestMatchers("/h2-console/**").permitAll()      // local SQL playground for learning
+                .requestMatchers("/api/game-saves/**").permitAll()
                 .anyRequest().authenticated()                       // everything else requires JWT
             )
             // H2 console uses HTML frames — allow them so the console UI works
